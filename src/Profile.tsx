@@ -1,0 +1,30 @@
+import { useState } from 'react';
+import { Pencil, Plus, MapPin, Sprout, CalendarDays, X, ArrowUpRight, Link2, Bookmark, FileText, Mail, Phone, MoreHorizontal, Trash2 } from 'lucide-react';
+import { useArchive } from './storage';
+import { displayName, formatFamilyDate, lifeSpan, relatives, type Person, type Memory } from './model';
+import { Avatar, IconButton, Button, Menu, MenuItem, Empty } from './ui';
+
+export function Profile({ person, onClose, onEdit, onAdd, onSelect, onConnect, onMemory, onNewMemory, onDelete, onRoot }: { person: Person; onClose: () => void; onEdit: (p: Person) => void; onAdd: (id: string) => void; onSelect: (id: string) => void; onConnect: (id: string) => void; onMemory: (m: Memory) => void; onNewMemory: (id: string) => void; onDelete: (p: Person) => void; onRoot: (id: string) => void }) {
+  const { archive } = useArchive(), [tab, setTab] = useState('about');
+  const family = relatives(archive, person.id), memories = archive.memories.filter(m => m.personIds.includes(person.id));
+  const detail = (label: string, value: string, icon?: React.ReactNode) => value && <div className="detail-row"><dt>{icon}{label}</dt><dd>{value}</dd></div>;
+  return <aside className="profile-panel" aria-label={`${displayName(person)} profile`}>
+    <div className="profile-top"><span>MEMBER DETAILS</span><IconButton label="Close member details" onClick={onClose}><X size={18}/></IconButton></div>
+    <div className="profile-identity"><Avatar person={person} size="large"/><div className="profile-title"><h2>{displayName(person, archive.settings.nameOrder)}</h2>{person.nativeName && <p className="native-name">{person.nativeName}</p>}{person.knownAs && <p className="nickname">“{person.knownAs}”</p>}</div><span className={`status-badge ${person.livingStatus}`}>{person.livingStatus === 'living' ? 'Living' : person.livingStatus === 'deceased' ? 'Remembered' : 'Status unknown'}</span></div>
+    <div className="profile-actions"><Button onClick={() => onEdit(person)}><Pencil size={15}/>Edit details</Button><IconButton label="Add relative" onClick={() => onAdd(person.id)}><Plus size={18}/></IconButton><Menu label={<span title="More member actions" aria-label="More member actions"><MoreHorizontal size={17}/></span>}><MenuItem onSelect={() => onConnect(person.id)}><Link2 size={16}/>Connect existing member</MenuItem><MenuItem onSelect={() => onRoot(person.id)}><LocateIcon/>Set as starting person</MenuItem><MenuItem danger onSelect={() => onDelete(person)}><Trash2 size={16}/>Remove member</MenuItem></Menu></div>
+    <div className="profile-tabs" role="tablist" aria-label="Member information">{[['about','About'],['family',`Family (${family.length})`],['memories',`Memories (${memories.length})`]].map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
+    <div className="profile-content" role="tabpanel">
+      {tab === 'about' && <>
+        <div className="profile-section"><h3>Life & places</h3><dl>{detail('Born', formatFamilyDate(person.birth,archive.settings.dateFormat) || 'Not recorded', <CalendarDays size={14}/>)}{person.livingStatus === 'deceased' && detail('Died', formatFamilyDate(person.death,archive.settings.dateFormat) || 'Date not recorded')}{detail('Birthplace', person.birthPlace,<MapPin size={14}/>)}{detail('Lives / lived in',person.currentPlace)}{detail('Occupation',person.occupation)}</dl></div>
+        <div className="profile-section"><h3>Family heritage</h3><dl>{detail('Gothram',person.gothram,<Sprout size={14}/>)}{detail('Ancestral place',person.ancestralVillage)}{detail('Birth surname',person.maidenName)}{detail('Languages',person.languages)}{!person.gothram && !person.ancestralVillage && !person.maidenName && !person.languages && <p className="subtle">Not recorded yet</p>}</dl></div>
+        {(person.notes || person.source) && <div className="profile-section"><h3>Their story</h3>{person.notes && <p className="story-text">{person.notes}</p>}{person.source && <div className="source-note"><FileText size={14}/><span>{person.source}</span></div>}<span className={`confidence ${person.confidence}`}>{person.confidence === 'confirmed' ? 'Confirmed with a record' : person.confidence === 'recalled' ? 'Family recollection' : 'Needs checking'}</span></div>}
+        {(person.email || person.phone) && <div className="profile-section"><h3>Contact</h3><dl>{detail('Phone',person.phone,<Phone size={14}/>)}{detail('Email',person.email,<Mail size={14}/>)}</dl></div>}
+        {person.customFacts.length > 0 && <div className="profile-section"><h3>Other details</h3><dl>{person.customFacts.map(f => <div className="detail-row" key={f.id}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl></div>}
+      </>}
+      {tab === 'family' && <>{family.length ? family.map(({person:p,label,relationship:r}) => <button className="relative-row" key={r.id} onClick={() => onSelect(p.id)}><Avatar person={p} size="small"/><span><strong>{displayName(p,archive.settings.nameOrder)}</strong><small>{label}{r.type === 'parent' && r.parentKind !== 'biological' ? ` · ${r.parentKind === 'unknown' ? 'type not recorded' : r.parentKind}` : ''}</small></span><ArrowUpRight size={15}/></button>) : <Empty title="No relationships yet"/>}<Button className="full-width" onClick={() => onAdd(person.id)}><Plus size={16}/>Add a relative</Button><Button className="full-width" variant="ghost" onClick={() => onConnect(person.id)}><Link2 size={16}/>Connect existing member</Button></>}
+      {tab === 'memories' && <>{memories.length ? memories.map(m => <button className="profile-memory" key={m.id} onClick={() => onMemory(m)}><Bookmark size={17}/><span><strong>{m.title}</strong><small>{m.storyteller || formatFamilyDate(m.date) || m.category}</small></span><ArrowUpRight size={15}/></button>) : <Empty title="Their stories belong here"/>}<Button className="full-width" onClick={() => onNewMemory(person.id)}><Plus size={16}/>Add a memory</Button></>}
+    </div>
+  </aside>;
+}
+function LocateIcon() { return <GitRoot/>; }
+function GitRoot() { return <Sprout size={16}/>; }

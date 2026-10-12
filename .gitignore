@@ -1,0 +1,18 @@
+node_modules
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.DS_Store
+
+# Local-only working notes and legacy files (not part of the shipped app)
+.env*
+CLAUDE.md
+CLAUDE_HANDOFF.md
+DRIVE_SYNC_HANDOFF.md
+FINAL_STATUS.md
+bugs.md
+codex-chats/
+Screenshot*.png
+app.js
+styles.css
